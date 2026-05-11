@@ -190,7 +190,7 @@ def register_auth_callbacks(app):
                 f"{API}/login",
                 data={"username": username, "password": password},
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
-                timeout=10
+                timeout=30
             )
             if response.status_code == 200:
                 data = response.json()
@@ -243,7 +243,7 @@ def register_auth_callbacks(app):
                 f"{API}/register",
                 json={"username": username, "email": email,
                       "password": password, "role": role},
-                timeout=10
+                timeout=30
             )
             if response.status_code == 200:
                 return dbc.Alert(

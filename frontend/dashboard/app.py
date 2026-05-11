@@ -84,7 +84,7 @@ register_dashboard_callbacks(app)
 # ── RUN ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("\n" + "=" * 60)
-    print("🚀 Security Log Prioritization Dashboard — CBU DICT")
+    print(" Security Log Prioritization Dashboard — CBU DICT")
     print("=" * 60)
     print("📡 Backend API : http://127.0.0.1:8000")
     print("🌐 Dashboard   : http://127.0.0.1:8050")

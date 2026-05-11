@@ -25,8 +25,8 @@ def get_headers(auth_data):
 def empty_fig():
     return go.Figure().update_layout(
         paper_bgcolor="#0f172a",
-        plot_bgcolor ="#0f172a",
-        font_color   ="white"
+        plot_bgcolor="#0f172a",
+        font_color="white"
     )
 
 
@@ -72,21 +72,21 @@ def dashboard_layout(username, role):
 
         # ── Summary Cards
         dbc.Row([
-            dbc.Col(_stat_card("fas fa-fire",           "#ef4444",
-                               "High Priority",   "high-count"),   width=3),
+            dbc.Col(_stat_card("fas fa-fire", "#ef4444",
+                               "High Priority", "high-count"), width=3),
             dbc.Col(_stat_card("fas fa-exclamation-triangle", "#f59e0b",
                                "Medium Priority", "medium-count"), width=3),
-            dbc.Col(_stat_card("fas fa-check-circle",   "#10b981",
-                               "Low Priority",    "low-count"),    width=3),
-            dbc.Col(_stat_card("fas fa-database",       "#3b82f6",
-                               "Total Events",    "total-count"),  width=3),
+            dbc.Col(_stat_card("fas fa-check-circle", "#10b981",
+                               "Low Priority", "low-count"), width=3),
+            dbc.Col(_stat_card("fas fa-database", "#3b82f6",
+                               "Total Events", "total-count"), width=3),
         ], className="mb-4"),
 
         # ── Charts
         dbc.Row([
-            dbc.Col(_chart_card("Priority Distribution",  "priority-pie"),     width=4),
-            dbc.Col(_chart_card("Risk Score Distribution","risk-histogram"),    width=4),
-            dbc.Col(_chart_card("Feature Importance",     "feature-importance-chart"), width=4),
+            dbc.Col(_chart_card("Priority Distribution", "priority-pie"), width=4),
+            dbc.Col(_chart_card("Risk Score Distribution", "risk-histogram"), width=4),
+            dbc.Col(_chart_card("Feature Importance", "feature-importance-chart"), width=4),
         ], className="mb-4"),
 
         # ── Filters
@@ -97,10 +97,10 @@ def dashboard_layout(username, role):
                     dbc.Select(
                         id="priority-filter",
                         options=[
-                            {"label": "All Events",       "value": "All"},
+                            {"label": "All Events", "value": "All"},
                             {"label": "🔴 High Priority", "value": "High"},
-                            {"label": "🟡 Medium Priority","value": "Medium"},
-                            {"label": "🟢 Low Priority",  "value": "Low"},
+                            {"label": "🟡 Medium Priority", "value": "Medium"},
+                            {"label": "🟢 Low Priority", "value": "Low"},
                         ],
                         value="All",
                         style={"backgroundColor": "#0f172a",
@@ -268,7 +268,7 @@ def dashboard_layout(username, role):
             ])
         ])], className="mb-4"),
 
-        # ── Feedback History (admin only)
+        # ── Feedback History
         dbc.Row([dbc.Col([
             _card("📊 Feedback History", [
                 html.Div(id="feedback-table-container")
@@ -288,9 +288,9 @@ def _stat_card(icon, color, label, count_id):
         html.H2(id=count_id, style={"fontSize": "2.5rem",
                                      "fontWeight": "bold", "color": color})
     ], style={
-        "background"  : "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+        "background": "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
         "borderRadius": "15px", "padding": "20px", "textAlign": "center",
-        "border"      : f"1px solid {color}"
+        "border": f"1px solid {color}"
     })
 
 def _chart_card(title, graph_id):
@@ -298,8 +298,8 @@ def _chart_card(title, graph_id):
         dbc.CardHeader(html.H5(title, style={"color": "#3b82f6"})),
         dbc.CardBody(dcc.Graph(id=graph_id))
     ], style={
-        "background"  : "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
-        "border"      : "1px solid #3b82f6",
+        "background": "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+        "border": "1px solid #3b82f6",
         "borderRadius": "15px"
     })
 
@@ -308,8 +308,8 @@ def _card(title, content):
         dbc.CardHeader(html.H5(title, style={"color": "#3b82f6"})),
         dbc.CardBody(content)
     ], style={
-        "background"  : "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
-        "border"      : "1px solid #3b82f6",
+        "background": "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+        "border": "1px solid #3b82f6",
         "borderRadius": "15px"
     })
 
@@ -318,45 +318,45 @@ def _card(title, content):
 def register_dashboard_callbacks(app):
 
     @app.callback(
-        Output("auth-store", "data",     allow_duplicate=True),
-        Output("url",        "pathname", allow_duplicate=True),
-        Input("logout-btn",  "n_clicks"),
+        Output("auth-store", "data", allow_duplicate=True),
+        Output("url", "pathname", allow_duplicate=True),
+        Input("logout-btn", "n_clicks"),
         prevent_initial_call=True
     )
     def handle_logout(n_clicks):
         return None, "/"
 
     @app.callback(
-        Output("high-count",     "children"),
-        Output("medium-count",   "children"),
-        Output("low-count",      "children"),
-        Output("total-count",    "children"),
-        Output("priority-pie",   "figure"),
+        Output("high-count", "children"),
+        Output("medium-count", "children"),
+        Output("low-count", "children"),
+        Output("total-count", "children"),
+        Output("priority-pie", "figure"),
         Output("risk-histogram", "figure"),
-        Input("refresh-btn",     "n_clicks"),
-        Input("load-trigger",    "data"),
-        State("auth-store",      "data"),
+        Input("refresh-btn", "n_clicks"),
+        Input("load-trigger", "data"),
+        State("auth-store", "data"),
         prevent_initial_call=False
     )
     def update_summary(_clicks, _trigger, auth_data):
         if not auth_data or not auth_data.get("token"):
             return "—", "—", "—", "—", empty_fig(), empty_fig()
         try:
-            headers      = get_headers(auth_data)
+            headers = get_headers(auth_data)
             summary_resp = requests.get(
                 f"{API}/priority-summary", headers=headers, timeout=30
             )
-            events_resp  = requests.get(
+            events_resp = requests.get(
                 f"{API}/prioritized", headers=headers, timeout=30
             )
             if summary_resp.status_code != 200 or events_resp.status_code != 200:
                 return "—", "—", "—", "—", empty_fig(), empty_fig()
 
-            s      = summary_resp.json()
-            high   = s.get("High",   0)
+            s = summary_resp.json()
+            high = s.get("High", 0)
             medium = s.get("Medium", 0)
-            low    = s.get("Low",    0)
-            total  = s.get("Total",  0)
+            low = s.get("Low", 0)
+            total = s.get("Total", 0)
 
             pie = px.pie(
                 names=["High", "Medium", "Low"],
@@ -373,8 +373,8 @@ def register_dashboard_callbacks(app):
                 color_discrete_sequence=["#3b82f6"]
             ).update_layout(
                 paper_bgcolor="#0f172a",
-                plot_bgcolor ="#0f172a",
-                font_color   ="white"
+                plot_bgcolor="#0f172a",
+                font_color="white"
             ) if not df.empty else empty_fig()
 
             return str(high), str(medium), str(low), str(total), pie, hist
@@ -384,25 +384,25 @@ def register_dashboard_callbacks(app):
             return "—", "—", "—", "—", empty_fig(), empty_fig()
 
     @app.callback(
-        Output("events-table",             "data"),
-        Output("events-table",             "columns"),
+        Output("events-table", "data"),
+        Output("events-table", "columns"),
         Output("feature-importance-chart", "figure"),
-        Input("refresh-btn",               "n_clicks"),
-        Input("load-trigger",              "data"),
-        Input("priority-filter",           "value"),
-        Input("hour-filter",               "value"),
-        State("auth-store",                "data"),
+        Input("refresh-btn", "n_clicks"),
+        Input("load-trigger", "data"),
+        Input("priority-filter", "value"),
+        Input("hour-filter", "value"),
+        State("auth-store", "data"),
         prevent_initial_call=False
     )
     def update_table(_clicks, _trigger, priority_filter, hour_range, auth_data):
         if not auth_data or not auth_data.get("token"):
             return [], [], empty_fig()
         try:
-            headers     = get_headers(auth_data)
+            headers = get_headers(auth_data)
             events_resp = requests.get(
                 f"{API}/prioritized", headers=headers, timeout=30
             )
-            imp_resp    = requests.get(
+            imp_resp = requests.get(
                 f"{API}/feature-importance", headers=headers, timeout=10
             )
             if events_resp.status_code != 200:
@@ -424,13 +424,13 @@ def register_dashboard_callbacks(app):
             display_cols = ["event_id", "hour", "day_of_week",
                             "risk_score", "priority"]
             display_cols = [c for c in display_cols if c in df.columns]
-            columns      = [{"name": c.replace("_", " ").title(), "id": c}
-                            for c in display_cols]
-            data         = df[display_cols].to_dict(orient="records")
+            columns = [{"name": c.replace("_", " ").title(), "id": c}
+                       for c in display_cols]
+            data = df[display_cols].to_dict(orient="records")
 
             bar = empty_fig()
             if imp_resp.status_code == 200:
-                imp    = imp_resp.json()
+                imp = imp_resp.json()
                 imp_df = pd.DataFrame(
                     list(imp.items()), columns=["Feature", "Importance"]
                 ).sort_values("Importance", ascending=True)
@@ -440,9 +440,9 @@ def register_dashboard_callbacks(app):
                     color_continuous_scale="Blues"
                 ).update_layout(
                     paper_bgcolor="#0f172a",
-                    plot_bgcolor ="#0f172a",
-                    font_color   ="white",
-                    height       =400
+                    plot_bgcolor="#0f172a",
+                    font_color="white",
+                    height=400
                 )
 
             return data, columns, bar
@@ -452,121 +452,146 @@ def register_dashboard_callbacks(app):
             return [], [], empty_fig()
 
     @app.callback(
-        Output("shap-chart",          "figure"),
+        Output("shap-chart", "figure"),
         Output("shap-interpretation", "children"),
-        Input("shap-btn",             "n_clicks"),
-        State("shap-index",           "value"),
-        State("auth-store",           "data"),
+        Input("shap-btn", "n_clicks"),
+        State("shap-index", "value"),
+        State("auth-store", "data"),
         prevent_initial_call=True
     )
     def update_shap(n_clicks, event_index, auth_data):
-        if not auth_data or not auth_data.get("token"):
-            return empty_fig(), dbc.Alert(
-                "Please log in to view SHAP explanations", color="warning"
-            )
         if event_index is None:
             event_index = 0
 
         try:
-            headers  = get_headers(auth_data)
-            resp     = requests.get(
-                f"{API}/shap/event/{event_index}",
-                headers=headers, timeout=60
-            )
-            if resp.status_code == 401:
-                return empty_fig(), dbc.Alert(
-                    "Session expired — please log out and log in again",
-                    color="danger"
+            headers = {}
+            if auth_data and isinstance(auth_data, dict):
+                token = auth_data.get("token")
+                if token:
+                    headers = {"Authorization": f"Bearer {token}"}
+            
+            resp = requests.get(f"{API}/shap/event/{event_index}", headers=headers, timeout=60)
+            
+            if resp.status_code == 404:
+                fig = go.Figure().update_layout(
+                    title=f"Event {event_index} Not Found",
+                    paper_bgcolor="#0f172a",
+                    font_color="white",
+                    height=250
                 )
+                return fig, dbc.Alert(f"❌ Event {event_index} not found", color="warning")
+            
             if resp.status_code != 200:
-                return empty_fig(), dbc.Alert(
-                    f"API error {resp.status_code}: {resp.text}", color="danger"
+                fig = go.Figure().update_layout(
+                    title=f"Error {resp.status_code}",
+                    paper_bgcolor="#0f172a",
+                    font_color="white",
+                    height=250
                 )
+                return fig, dbc.Alert(f"❌ Failed to load SHAP data", color="danger")
 
-            d            = resp.json()
-            features     = d.get("feature_names", [])
-            shap_vals    = d.get("shap_values",   [])
+            d = resp.json()
+            
+            features = d.get("feature_names", [])
+            shap_vals = d.get("shap_values", [])
             feature_vals = d.get("feature_values", [])
             interpretation_text = d.get("interpretation", "")
-            top_features = d.get("top_features", [])
+            predicted_label = d.get("predicted_label", "Unknown")
 
-            if not features:
-                return empty_fig(), dbc.Alert(
-                    "No SHAP data for this event", color="warning"
+            if not features or not shap_vals:
+                fig = go.Figure().update_layout(
+                    title="No SHAP Data",
+                    paper_bgcolor="#0f172a",
+                    font_color="white",
+                    height=250
                 )
+                return fig, dbc.Alert("No SHAP data available", color="warning")
 
-            sorted_pairs = sorted(
-                zip(features, shap_vals, feature_vals),
-                key=lambda x: abs(x[1]), reverse=True
-            )[:15]
-            fs, ss, vs = zip(*sorted_pairs)
+            top_n = min(10, len(features))
+            paired = list(zip(features, shap_vals, feature_vals))
+            paired.sort(key=lambda x: abs(x[1]), reverse=True)
+            paired = paired[:top_n]
+            
+            features_top = [p[0] for p in paired]
+            shap_top = [p[1] for p in paired]
+            vals_top = [p[2] for p in paired]
 
             fig = go.Figure(go.Bar(
-                x=list(ss),
-                y=[f"{f} = {round(v, 2)}" for f, v in zip(fs, vs)],
+                x=shap_top,
+                y=features_top,
                 orientation="h",
-                marker_color=["#ef4444" if v > 0 else "#10b981" for v in ss],
-                text=[f"{v:.3f}" for v in ss],
-                textposition="outside"
+                marker_color=["#ef4444" if v > 0 else "#10b981" for v in shap_top],
+                text=[f"{v:.3f}" for v in shap_top],
+                textposition="outside",
+                textfont=dict(size=9)
             ))
+            
             fig.update_layout(
-                title       =f"SHAP Explanation — Event {event_index}",
-                xaxis_title ="SHAP Value  "
-                             "(🔴 Positive = increases risk  |  "
-                             "🟢 Negative = reduces risk)",
+                title=f"Event {event_index}: {predicted_label}",
+                xaxis_title="SHAP Value",
                 paper_bgcolor="#0f172a",
-                plot_bgcolor ="0f172a",
-                font_color   ="white",
-                height       =500,
-                margin       =dict(l=220, r=60, t=60, b=60)
+                plot_bgcolor="#0f172a",
+                font_color="white",
+                height=280,
+                margin=dict(l=140, r=40, t=40, b=20),
+                title_font_size=12
             )
 
-            interpretation = dbc.Alert([
-                html.B("📖 Interpretation:"), html.Br(),
-                html.Span(interpretation_text,
-                          style={"color": "#e2e8f0"}), html.Br(), html.Br(),
-                html.Span("🔴 Red = increases risk  |  ", style={"color": "#ef4444"}),
-                html.Span("🟢 Green = reduces risk",     style={"color": "#10b981"}),
-            ], color="info")
+            interpretation = dbc.Alert(interpretation_text, color="info")
 
             return fig, interpretation
 
+        except requests.exceptions.ConnectionError:
+            fig = go.Figure().update_layout(
+                title="Connection Error",
+                paper_bgcolor="#0f172a",
+                font_color="white",
+                height=250
+            )
+            return fig, dbc.Alert("Cannot connect to backend server", color="danger")
+            
         except Exception as e:
             print(f"SHAP error: {e}")
-            return empty_fig(), dbc.Alert(f"Error: {str(e)}", color="danger")
+            fig = go.Figure().update_layout(
+                title="Error",
+                paper_bgcolor="#0f172a",
+                font_color="white",
+                height=250
+            )
+            return fig, dbc.Alert(f"Error: {str(e)[:100]}", color="danger")
 
     @app.callback(
         Output("feedback-message", "children"),
-        Input("feedback-btn",      "n_clicks"),
-        State("shap-index",              "value"),
-        State("feedback-correct-label",  "value"),
-        State("feedback-correct-flag",   "value"),
-        State("feedback-comment",        "value"),
-        State("auth-store",              "data"),
+        Input("feedback-btn", "n_clicks"),
+        State("shap-index", "value"),
+        State("feedback-correct-label", "value"),
+        State("feedback-correct-flag", "value"),
+        State("feedback-comment", "value"),
+        State("auth-store", "data"),
         prevent_initial_call=True
     )
     def submit_feedback(n_clicks, event_index, correct_label,
                          correct_flag, comment, auth_data):
+        
         if not auth_data or not auth_data.get("token"):
-            return dbc.Alert("Please log in to submit feedback", color="warning")
+            return dbc.Alert("Please login to submit feedback", color="warning")
+        
         if event_index is None:
             return dbc.Alert("Please enter an event index first", color="warning")
+        
         if not correct_label:
-            return dbc.Alert(
-                "Please select the correct label", color="warning"
-            )
+            return dbc.Alert("Please select the correct label", color="warning")
 
         try:
             headers = get_headers(auth_data)
 
-            # Get current classification for this event
             cls_resp = requests.get(
                 f"{API}/classification/event/{event_index}",
                 headers=headers, timeout=10
             )
+            
             if cls_resp.status_code != 200:
-                return dbc.Alert("Could not fetch classification data",
-                                 color="danger")
+                return dbc.Alert(f"Could not fetch classification data: {cls_resp.status_code}", color="danger")
 
             cls = cls_resp.json()
 
@@ -574,84 +599,75 @@ def register_dashboard_callbacks(app):
                 f"{API}/classification/feedback",
                 headers=headers,
                 json={
-                    "event_index"            : event_index,
-                    "event_id"               : cls["event_id"],
-                    "predicted_class"        : cls["predicted_class"],
-                    "predicted_label"        : cls["predicted_label"],
-                    "correct_label"          : correct_label,
-                    "analyst_comment"        : comment or "",
+                    "event_index": event_index,
+                    "event_id": cls.get("event_id", event_index),
+                    "predicted_class": cls.get("predicted_class", 0),
+                    "predicted_label": cls.get("predicted_label", "Unknown"),
+                    "correct_label": correct_label,
+                    "analyst_comment": comment or "",
                     "is_correctly_classified": correct_flag == "true"
                 },
                 timeout=10
             )
 
             if feedback_resp.status_code == 200:
-                return dbc.Alert([
-                    html.B("✅ Feedback submitted successfully! "),
-                    f"Feedback ID: {feedback_resp.json().get('feedback_id')}"
-                ], color="success")
+                return dbc.Alert(
+                    [html.Strong("✅ Feedback submitted! "), f"ID: {feedback_resp.json().get('feedback_id')}"],
+                    color="success"
+                )
+            else:
+                error_detail = feedback_resp.json().get('detail', 'Unknown error')
+                return dbc.Alert(f"❌ Failed: {error_detail}", color="danger")
 
-            return dbc.Alert(
-                f"Failed: {feedback_resp.json().get('detail', 'Unknown error')}",
-                color="danger"
-            )
-
+        except requests.exceptions.ConnectionError:
+            return dbc.Alert("Cannot connect to server", color="danger")
         except Exception as e:
-            return dbc.Alert(f"Error: {str(e)}", color="danger")
+            print(f"Feedback error: {e}")
+            return dbc.Alert(f"Error: {str(e)[:100]}", color="danger")
 
     @app.callback(
         Output("feedback-table-container", "children"),
         Input("load-trigger", "data"),
-        Input("refresh-btn",  "n_clicks"),
-        State("auth-store",   "data"),
+        Input("refresh-btn", "n_clicks"),
+        State("auth-store", "data"),
         prevent_initial_call=False
     )
     def load_feedback_history(_trigger, _clicks, auth_data):
         if not auth_data or not auth_data.get("token"):
-            return html.P("Log in to view feedback history",
-                          style={"color": "#94a3b8"})
+            return html.P("Login to view feedback history", style={"color": "#94a3b8"})
+        
         try:
             headers = get_headers(auth_data)
-            resp    = requests.get(
-                f"{API}/classification/feedback/all",
-                headers=headers, timeout=10
-            )
+            resp = requests.get(f"{API}/classification/feedback/all", headers=headers, timeout=10)
+            
+            if resp.status_code == 403:
+                return html.P("Admin access required to view feedback history", style={"color": "#f59e0b"})
+            
             if resp.status_code != 200:
-                return dbc.Alert("Could not load feedback history",
-                                 color="danger")
+                return dbc.Alert("Could not load feedback", color="danger")
 
             rows = resp.json()
             if not rows:
-                return html.P("No feedback submitted yet.",
-                              style={"color": "#94a3b8"})
+                return html.P("No feedback submitted yet.", style={"color": "#94a3b8"})
 
-            df   = pd.DataFrame(rows)
-            cols = ["id", "event_index", "event_id", "predicted_label",
-                    "correct_label", "is_correctly_classified",
-                    "analyst_username", "submitted_at", "status"]
+            df = pd.DataFrame(rows)
+            cols = ["id", "event_index", "predicted_label", "correct_label", 
+                    "is_correctly_classified", "analyst_username", "submitted_at", "status"]
             cols = [c for c in cols if c in df.columns]
 
             return dash_table.DataTable(
-                data   =df[cols].to_dict(orient="records"),
-                columns=[{"name": c.replace("_", " ").title(), "id": c}
-                         for c in cols],
-                page_size=10,
+                data=df[cols].to_dict(orient="records"),
+                columns=[{"name": c.replace("_", " ").title(), "id": c} for c in cols],
+                page_size=8,
                 style_table={"overflowX": "auto"},
-                style_header={"backgroundColor": "#1e293b",
-                              "color": "#3b82f6", "fontWeight": "bold",
-                              "border": "1px solid #334155"},
-                style_data={"backgroundColor": "#0f172a",
-                            "color": "#e2e8f0",
-                            "border": "1px solid #334155"},
+                style_header={"backgroundColor": "#1e293b", "color": "#3b82f6", "fontWeight": "bold"},
+                style_data={"backgroundColor": "#0f172a", "color": "#e2e8f0"},
                 style_data_conditional=[
-                    {"if": {"filter_query": '{is_correctly_classified} = false'},
-                     "backgroundColor": "#450a0a", "color": "#fca5a5"},
-                    {"if": {"filter_query": '{status} = "pending"'},
-                     "color": "#fcd34d"},
-                    {"if": {"filter_query": '{status} = "reviewed"'},
-                     "color": "#6ee7b7"},
+                    {"if": {"filter_query": '{is_correctly_classified} = false'}, "backgroundColor": "#450a0a", "color": "#fca5a5"},
+                    {"if": {"filter_query": '{is_correctly_classified} = true'}, "backgroundColor": "#022c22", "color": "#6ee7b7"},
                 ],
                 sort_action="native",
             )
         except Exception as e:
-            return dbc.Alert(f"Error: {str(e)}", color="danger")
+            print(f"Feedback history error: {e}")
+            return dbc.Alert(f"Error: {str(e)[:100]}", color="danger")

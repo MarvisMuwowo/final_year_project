@@ -189,11 +189,18 @@ def assign_ml_priority(df, model, X_test):
 
 
 # ── ENTRY POINT ───────────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
 
     # ── Train
     model = train_xgboost(X_train, X_test, y_train, y_test)
-    save_model(model)
+
+    # ── Save to models/ folder explicitly
+    models_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        '..', '..', 'models', 'xgboost_model.pkl'
+    )
+    save_model(model, path=models_path)
 
     # ── Feature Importances
     importance = pd.Series(

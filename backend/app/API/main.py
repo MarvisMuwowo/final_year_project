@@ -21,13 +21,11 @@ from config import DB_CONFIG
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'service'))
 from preprocess import process_data
 
-# ── Import shared dependencies ────────────────────────────────────────────────
 from app.API.dependencies import (
     get_current_user, get_db_connection, get_user_from_db,
     _cache, set_model, SECRET_KEY, ALGORITHM
 )
 
-# ── Import routers ────────────────────────────────────────────────────────────
 from app.API.classification import router as classification_router, init_feedback_table
 from app.API.shap_explainer  import router as shap_router
 
@@ -48,7 +46,7 @@ app.include_router(shap_router)
 # ── Load model ────────────────────────────────────────────────────────────────
 MODEL_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
-    '..', '..', 'xgboost_model.pkl'
+    '..', '..', 'models', 'xgboost_model.pkl'
 )
 model = joblib.load(MODEL_PATH)
 set_model(model)
@@ -158,7 +156,8 @@ def build_cache():
     max_s      = raw_scores.max()
     risk_score = 1 - (raw_scores - min_s) / (max_s - min_s)
 
-    y_pred  = model.predict(X_test)
+    current_model = model
+    y_pred  = current_model.predict(X_test)
     result  = X_test.copy()
     result["predicted"]  = y_pred
     result["risk_score"] = risk_score
@@ -172,21 +171,29 @@ def build_cache():
     priority_counts = result["priority"].value_counts().to_dict()
 
     print("  Computing SHAP values...")
-    explainer   = shap.TreeExplainer(model)
+    explainer   = shap.TreeExplainer(current_model)
     shap_values = explainer.shap_values(X_test)
 
-    feature_importance = dict(zip(
-        model.get_booster().feature_names,
-        model.feature_importances_.tolist()
-    ))
+    # Feature importance — works for both XGBoost and Random Forest
+    try:
+        feature_importance = dict(zip(
+            current_model.get_booster().feature_names,
+            current_model.feature_importances_.tolist()
+        ))
+    except AttributeError:
+        feature_importance = dict(zip(
+            X_test.columns.tolist(),
+            current_model.feature_importances_.tolist()
+        ))
 
-    _cache["df_raw"]            = df
-    _cache["X_test"]            = X_test
-    _cache["result"]            = result
-    _cache["priority_counts"]   = priority_counts
-    _cache["shap_values"]       = shap_values
-    _cache["explainer"]         = explainer
-    _cache["feature_importance"]= feature_importance
+    _cache["df_raw"]             = df
+    _cache["X_test"]             = X_test
+    _cache["result"]             = result
+    _cache["priority_counts"]    = priority_counts
+    _cache["shap_values"]        = shap_values
+    _cache["explainer"]          = explainer
+    _cache["feature_importance"] = feature_importance
+    _cache["active_model"]       = _cache.get("active_model", "xgboost")
 
     print(f"  High   : {priority_counts.get('High',   0)}")
     print(f"  Medium : {priority_counts.get('Medium', 0)}")
@@ -351,7 +358,7 @@ def get_me(current_user: dict = Depends(get_current_user)):
     )
 
 
-# ── PROTECTED ENDPOINTS (require login) ───────────────────────────────────────
+# ── PROTECTED ENDPOINTS ───────────────────────────────────────────────────────
 @app.get("/events")
 def get_events(current_user: dict = Depends(get_current_user)):
     return _cache["df_raw"].to_dict(orient="records")
@@ -380,16 +387,74 @@ def feature_importance(current_user: dict = Depends(get_current_user)):
     return _cache["feature_importance"]
 
 
+@app.get("/active-model")
+def get_active_model(current_user: dict = Depends(get_current_user)):
+    """Return which model is currently active."""
+    return {"active_model": _cache.get("active_model", "xgboost")}
+
+
+# ── ADMIN ONLY ENDPOINTS ──────────────────────────────────────────────────────
+@app.post("/switch-model/{model_name}")
+def switch_model(
+    model_name   : str,
+    current_user : dict = Depends(get_current_user)
+):
+    """Switch active model — admin only."""
+    if current_user["role"] not in ["system_admin", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can switch models"
+        )
+
+    valid_models = ["xgboost", "random_forest"]
+    if model_name not in valid_models:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid model. Choose from: {valid_models}"
+        )
+
+    model_files = {
+        "xgboost"      : "xgboost_model.pkl",
+        "random_forest": "random_forest_model.pkl"
+    }
+
+    model_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        '..', '..', 'models', model_files[model_name]
+    )
+
+    if not os.path.exists(model_path):
+        raise HTTPException(
+            status_code=404,
+            detail=f"{model_name} model file not found — train it first"
+        )
+
+    new_model = joblib.load(model_path)
+    set_model(new_model)
+    _cache["active_model"] = model_name
+
+    # Rebuild cache with new model
+    global model
+    model = new_model
+    build_cache()
+
+    return {
+        "message"     : f"Switched to {model_name} successfully",
+        "active_model": model_name,
+        "switched_by" : current_user["username"]
+    }
+
+
 @app.post("/refresh-cache")
 def refresh_cache(current_user: dict = Depends(get_current_user)):
+    """Rebuild data cache — admin only."""
     if current_user["role"] not in ["system_admin", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only admins can refresh the cache"
         )
     build_cache()
-    return {"message": "Cache refreshed", "total": len(_cache["result"])}
-
-
-# ── SHAP ENDPOINT IS NOW HANDLED BY THE ROUTER ────────────────────────────────
-# The /shap/event/{event_index} endpoint is in shap_explainer.py
+    return {
+        "message": "Cache refreshed successfully",
+        "total"  : len(_cache["result"])
+    }

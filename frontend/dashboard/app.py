@@ -4,9 +4,9 @@ import dash_bootstrap_components as dbc
 import webbrowser
 import threading
 
-# Import the modular layouts and callbacks
 from auth import auth_layout, register_auth_callbacks
-from dashboard import dashboard_layout, register_dashboard_callbacks
+from dashboard import dashboard_layout           # layout only
+from callbacks import register_dashboard_callbacks   # <-- changed
 
 # ── Custom CSS (consistent with professional dark theme) ──────────────────────
 custom_css = """
@@ -64,13 +64,13 @@ app.index_string = f'''
 # ── Root Layout ──────────────────────────────────────────────────────────────
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
-    dcc.Store(id="auth-store", storage_type="session"),   # stores user token
-    dcc.Store(id="auth-mode", data="login"),              # tracks login/register mode
-    dcc.Store(id="load-trigger", data=0),                 # triggers initial data fetch
+    dcc.Store(id="auth-store", storage_type="session", data={}),   # ✅ initialised with empty dict
+    dcc.Store(id="auth-mode", data="login"),                       # for auth toggle
+    dcc.Store(id="load-trigger", data=0),                          # triggers data fetch
     html.Div(id="page-content")
 ])
 
-# ── Routing: Show dashboard if logged in, else show auth page ────────────────
+# ── Routing: Show dashboard if logged in, else auth page ────────────────
 @app.callback(
     Output("page-content", "children"),
     Output("load-trigger", "data"),

@@ -158,14 +158,14 @@ def get_all_feedback(
     limit: int = 100,
     offset: int = 0
 ):
-    """Get all feedback submissions (admin only)"""
-    # Check if user is admin
-    if current_user["role"] not in ["admin", "system_admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    
+    """
+    Get all feedback submissions (available to any authenticated user).
+    Previously admin-only; now allowed for all logged‑in users.
+    """
+    # Admin check removed — any authenticated user can view feedback history.
+    # if current_user["role"] not in ["admin", "system_admin"]:
+    #     raise HTTPException(403, "Admin access required")
+
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     

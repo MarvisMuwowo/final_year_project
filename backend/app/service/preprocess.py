@@ -1,102 +1,98 @@
-import numpy as np
-import psycopg2
-import sys
-import os
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
+import warnings
+warnings.filterwarnings("ignore")
 
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'database'))
-from config import DB_CONFIG
+# Feature columns used by all models
+FEATURE_COLS = [
+    "event_id",
+    "level",
+    "user",
+    "log_name",
+    "opcode",
+    "computer",
+    "keyword",
+    "hour",
+    "day_of_week",
+    "is_weekend",
+]
 
-
-# ── 1. READ DATA ──────────────────────────────────────────────────────────────
-def get_events(conn):
-    query = "SELECT * FROM events"
-    return pd.read_sql(query, conn)
-
-
-# ── 2. PROCESS DATA ───────────────────────────────────────────────────────────
 def process_data(df):
+    """
+    Preprocess for training: split data first, then fit encoders and scaler on training set only.
+    Returns:
+        X_train, X_test, y_train, y_test, encoders, scaler
+    """
+    data = df.copy()
+    target_col = "task_category"
 
-    print("\n── Raw Data ──")
-    print(df.head())
-    print(f"Shape: {df.shape}")
-    print(f"Columns: {df.columns.tolist()}")
+    if target_col not in data.columns:
+        raise ValueError(f"Missing target column: {target_col}")
 
-    # Drop duplicates & irrelevant columns
-    df = df.drop_duplicates()
-    df = df.drop(columns=["id"], errors="ignore")
+    # ── Time features ──
+    if "logged" in data.columns:
+        data["logged"] = pd.to_datetime(data["logged"], errors="coerce")
+        data["hour"] = data["logged"].dt.hour.fillna(0).astype(int)
+        data["day_of_week"] = data["logged"].dt.dayofweek.fillna(0).astype(int)
+        data["is_weekend"] = (data["day_of_week"] >= 5).astype(int)
+    else:
+        data["hour"] = 0
+        data["day_of_week"] = 0
+        data["is_weekend"] = 0
 
-    # Merge rare task_categories into "Other"
-    min_samples  = 30
-    class_counts = df["task_category"].value_counts()
-    rare_classes = class_counts[class_counts < min_samples].index
-    df["task_category"] = df["task_category"].apply(
-        lambda x: "Other" if x in rare_classes else x
+    # ── Drop non‑feature columns ──
+    drop_cols = ["id", "logged", "status", "assigned_to"]
+    data.drop(columns=[c for c in drop_cols if c in data.columns], inplace=True, errors="ignore")
+
+    # ── Ensure event_id exists ──
+    if "event_id" not in data.columns:
+        data["event_id"] = data.index.astype(str)
+
+    # ── Merge rare target classes ──
+    counts = data[target_col].value_counts()
+    rare = counts[counts < 5].index.tolist()
+    if rare:
+        data[target_col] = data[target_col].replace(rare, "Other")
+
+    # ── Check required features ──
+    missing = [c for c in FEATURE_COLS if c not in data.columns]
+    if missing:
+        raise ValueError(f"Missing required feature columns: {missing}")
+
+    X = data[FEATURE_COLS].copy()
+    y = data[target_col].copy()
+
+    # ── Split train/test FIRST ──
+    X_train_raw, X_test_raw, y_train, y_test = train_test_split(
+        X, y, test_size=0.20, random_state=42, stratify=y
     )
 
-    print("\n── Class distribution after merging rare classes ──")
-    print(df["task_category"].value_counts())
+    # ── Encode categorical features on training set only ──
+    encoders = {}
+    for col in FEATURE_COLS:
+        if not is_numeric_dtype(X_train_raw[col]):
+            le = LabelEncoder()
+            X_train_raw[col] = le.fit_transform(X_train_raw[col].astype(str))
+            # Transform test set with same encoder
+            X_test_raw[col] = le.transform(X_test_raw[col].astype(str))
+            encoders[col] = le
+        else:
+            # Numeric columns: already numeric, no encoding needed
+            pass
 
-    # Parse datetime & extract features
-    df["logged"]      = pd.to_datetime(df["logged"])
-    df["hour"]        = df["logged"].dt.hour
-    df["day_of_week"] = df["logged"].dt.dayofweek
-    df["is_weekend"]  = df["day_of_week"].isin([5, 6]).astype(int)
-    df = df.drop(columns=["logged"])
+    # ── Scale on training set only ──
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train_raw)
+    X_test_scaled = scaler.transform(X_test_raw)
 
-    # Encode categorical columns
-    le               = LabelEncoder()
-    categorical_cols = ["level", "user", "log_name", "opcode", "computer", "keyword"]
-    for col in categorical_cols:
-        df[col] = le.fit_transform(df[col].astype(str))
+    X_train = pd.DataFrame(X_train_scaled, columns=FEATURE_COLS, index=X_train_raw.index)
+    X_test = pd.DataFrame(X_test_scaled, columns=FEATURE_COLS, index=X_test_raw.index)
 
-    # Feature / target split
-    X = df.drop(columns=["task_category"])
-    y = df["task_category"]
+    print("\n── Class Distribution ──")
+    print(y.value_counts())
+    print(f"\nTraining samples : {len(X_train)}")
+    print(f"Testing samples  : {len(X_test)}")
 
-    label = LabelEncoder()
-    y     = label.fit_transform(y)
-
-    print("\nClassification distribution")
-    print("Total samples:", len(y))
-    print("Classes found:", label.classes_)
-    print("Class count:", dict(zip(*np.unique(y, return_counts=True))))
-
-    # Train / test split FIRST
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    # Scale AFTER splitting
-    scaler         = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled  = scaler.transform(X_test)
-
-    X_train = pd.DataFrame(X_train_scaled, columns=X_train.columns)
-    X_test  = pd.DataFrame(X_test_scaled,  columns=X_test.columns)
-
-    print("\n── Processed Data ──")
-    print(f"Training samples : {X_train.shape[0]}")
-    print(f"Testing  samples : {X_test.shape[0]}")
-    print(f"Features         : {X_train.columns.tolist()}")
-
-    return X_train, X_test, y_train, y_test
-
-
-# ── 3. RUN ONLY WHEN EXECUTED DIRECTLY ───────────────────────────────────────
-if __name__ == "__main__":
-    try:
-        conn = psycopg2.connect(**DB_CONFIG)
-        print("Connected successfully")
-    except Exception as e:
-        print("Connection failed:", e)
-        conn = None
-
-    if conn:
-        df = get_events(conn)
-        X_train, X_test, y_train, y_test = process_data(df)
-        conn.close()
-        print("\nConnection closed")
-        print("\nData is ready for ML training ✓")
+    return X_train, X_test, y_train, y_test, encoders, scaler

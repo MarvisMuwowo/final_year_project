@@ -4,36 +4,29 @@ import dash_bootstrap_components as dbc
 import webbrowser
 import threading
 
-from auth import auth_layout, register_auth_callbacks
-from dashboard import dashboard_layout           # layout only
-from callbacks import register_dashboard_callbacks   # <-- changed
+from auth      import auth_layout,      register_auth_callbacks
+from dashboard import dashboard_layout,  register_dashboard_callbacks
+from landing   import landing_layout,    register_landing_callbacks   # ← new
 
-# ── Custom CSS (consistent with professional dark theme) ──────────────────────
 custom_css = """
 <style>
     body {
-        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        background-color: #0f172a;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        min-height: 100vh;
+        margin: 0; padding: 0;
     }
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #1a1a2e; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
     ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
-    .card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
-    }
+    a { transition: opacity 0.2s; }
+    a:hover { opacity: 0.8; }
 </style>
 """
 
-# ── Dash App Initialisation ──────────────────────────────────────────────────
 app = dash.Dash(
     __name__,
     external_stylesheets=[dbc.themes.CYBORG],
-    title="Security Log Prioritization — CBU DICT",
+    title="SecureLog AI — CBU DICT",
     suppress_callback_exceptions=True
 )
 
@@ -48,7 +41,6 @@ app.index_string = f'''
         {custom_css}
         <link rel="stylesheet"
               href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     </head>
     <body>
         {{%app_entry%}}
@@ -61,46 +53,58 @@ app.index_string = f'''
 </html>
 '''
 
-# ── Root Layout ──────────────────────────────────────────────────────────────
 app.layout = html.Div([
-    dcc.Location(id="url", refresh=False),
-    dcc.Store(id="auth-store", storage_type="session", data={}),   # ✅ initialised with empty dict
-    dcc.Store(id="auth-mode", data="login"),                       # for auth toggle
-    dcc.Store(id="load-trigger", data=0),                          # triggers data fetch
+    dcc.Location(id="url",          refresh=False),
+    dcc.Store(id="auth-store",      storage_type="session"),
+    dcc.Store(id="auth-mode",       data="login"),
+    dcc.Store(id="load-trigger",    data=0),
+    dcc.Interval(id="auto-refresh", interval=30*1000, n_intervals=0),
     html.Div(id="page-content")
 ])
 
-# ── Routing: Show dashboard if logged in, else auth page ────────────────
+
+# ── ROUTING ───────────────────────────────────────────────────────────────────
 @app.callback(
-    Output("page-content", "children"),
-    Output("load-trigger", "data"),
-    Input("url", "pathname"),
-    Input("auth-store", "data"),
+    Output("page-content",  "children"),
+    Output("load-trigger",  "data"),
+    Input("url",            "pathname"),
+    Input("auth-store",     "data"),
 )
 def display_page(pathname, auth_data):
-    if auth_data and isinstance(auth_data, dict) and auth_data.get("token"):
-        # User is authenticated → show dashboard
-        return dashboard_layout(
-            auth_data.get("username", "Analyst"),
-            auth_data.get("role", "security_analyst")
-        ), 1
-    # Not logged in → show authentication page
-    return auth_layout, 0
+    # ── /dashboard or / when logged in → dashboard
+    if pathname == "/dashboard":
+        if auth_data and isinstance(auth_data, dict) and auth_data.get("token"):
+            return dashboard_layout(
+                auth_data["username"], auth_data["role"]
+            ), 1
+        else:
+            # not logged in → auth page
+            return auth_layout, 0
 
-# ── Register all callbacks from auth and dashboard modules ───────────────────
+    # ── /login → auth page directly
+    if pathname == "/login":
+        return auth_layout, 0
+
+    # ── / → landing page
+    return landing_layout, 0
+
+
+# ── REGISTER CALLBACKS ────────────────────────────────────────────────────────
+register_landing_callbacks(app)
 register_auth_callbacks(app)
 register_dashboard_callbacks(app)
 
-# ── Run the server ───────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
     print("\n" + "=" * 60)
-    print(" Security Log Prioritization Dashboard — CBU DICT")
+    print("🚀 SecureLog AI — CBU DICT")
     print("=" * 60)
-    print("📡 Backend API : http://127.0.0.1:8000")
-    print("🌐 Dashboard   : http://127.0.0.1:8050")
+    print("🌐 Landing page : http://127.0.0.1:8050")
+    print("📊 Dashboard    : http://127.0.0.1:8050/dashboard")
+    print("📡 Backend API  : http://127.0.0.1:8000")
+    print("📖 API Docs     : http://127.0.0.1:8000/docs")
     print("=" * 60 + "\n")
 
-    # Automatically open the browser after a short delay
     def open_browser():
         webbrowser.open_new("http://127.0.0.1:8050")
 

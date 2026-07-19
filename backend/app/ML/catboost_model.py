@@ -1,9 +1,8 @@
-# backend/app/ML/random_forest_model.py
+# backend/app/ML/catboost_model.py
 import pandas as pd
 import psycopg2
-from sklearn.ensemble import RandomForestClassifier
+from catboost import CatBoostClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.preprocessing import LabelEncoder
 from imblearn.combine import SMOTETomek
 from imblearn.over_sampling import SMOTE
@@ -71,30 +70,33 @@ def apply_resampling(X_train, y_train, random_state=42):
     return X_res, y_res
 
 # ── TRAIN ─────────────────────────────────────────────────────────────────────
-def train_random_forest(X_train, X_test, y_train, y_test):
-    print("\n── Training Random Forest Model ──")
+def train_catboost(X_train, X_test, y_train, y_test):
+    print("\n── Training CatBoost Model ──")
 
     X_train_bal, y_train_bal = apply_resampling(X_train, y_train)
-    sample_weights = compute_sample_weight(class_weight="balanced", y=y_train_bal)
 
-    model = RandomForestClassifier(
-        n_estimators=500,
-        max_depth=8,
-        min_samples_split=5,
-        min_samples_leaf=2,
-        class_weight="balanced",
-        random_state=42,
-        n_jobs=-1,
-        verbose=1
+    model = CatBoostClassifier(
+        iterations=500,
+        depth=8,
+        learning_rate=0.05,
+        loss_function='MultiClass',
+        eval_metric='Accuracy',
+        random_seed=42,
+        verbose=50,
+        use_best_model=True,
+        early_stopping_rounds=30,
     )
 
     model.fit(
         X_train_bal,
         y_train_bal,
-        sample_weight=sample_weights
+        eval_set=(X_test, y_test),
+        verbose=50,
+        plot=False,
     )
 
     y_pred = model.predict(X_test)
+    y_pred = y_pred.flatten()
 
     # Decode for readable evaluation
     y_pred_labels = target_encoder.inverse_transform(y_pred)
@@ -123,13 +125,12 @@ def save_model(model, target_encoder, encoders, scaler, path):
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    model = train_random_forest(X_train, X_test, y_train_enc, y_test_enc)
+    model = train_catboost(X_train, X_test, y_train_enc, y_test_enc)
 
     # ─── SAVE TO backend/app/ML/models/ ──────────────────────────────────
-    # Get the directory of this script (backend/app/ML)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     models_dir = os.path.join(script_dir, 'models')
-    models_path = os.path.join(models_dir, 'random_forest_model.pkl')
+    models_path = os.path.join(models_dir, 'catboost_model.pkl')
     print(f"\nSaving to: {models_path}")
     save_model(model, target_encoder, encoders, scaler, path=models_path)
 
@@ -142,4 +143,4 @@ if __name__ == "__main__":
     print(importance)
 
     conn.close()
-    print("\n✅ Random Forest training complete!")
+    print("\n✅ CatBoost training complete!")

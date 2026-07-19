@@ -103,7 +103,7 @@ def submit_feedback(
             feedback.analyst_comment,
             feedback.is_correctly_classified,
             current_user["username"],
-            "pending"
+            "reviewed"
         ))
         
         conn.commit()

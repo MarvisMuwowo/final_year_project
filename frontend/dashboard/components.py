@@ -1,9 +1,8 @@
-# components.py
+# frontend/dashboard/components.py
 from dash import html, dcc, dash_table
 import dash_bootstrap_components as dbc
 
 def stat_card(icon, color, label, count_id, card_id):
-    """Clickable stat card that triggers a modal."""
     return html.Div([
         html.Div(
             id=card_id,
@@ -29,7 +28,7 @@ def chart_card(title, graph_id):
        style={"backgroundColor": "#1e293b", "border": "none", "height": "100%"})
 
 def events_modal():
-    """Modal for showing events by priority (clickable stat cards)."""
+    """Modal for showing events by priority."""
     return dbc.Modal([
         dbc.ModalHeader(dbc.ModalTitle(id="events-modal-title", children="Events")),
         dbc.ModalBody([
@@ -46,6 +45,15 @@ def events_modal():
                     {"if": {"filter_query": '{priority} = "High"'}, "backgroundColor": "#7f1a1a", "color": "#fca5a5"},
                     {"if": {"filter_query": '{priority} = "Medium"'}, "backgroundColor": "#78350f", "color": "#fcd34d"},
                     {"if": {"filter_query": '{priority} = "Low"'}, "backgroundColor": "#064e3b", "color": "#6ee7b7"},
+                    {"if": {"column_id": "index"}, "fontWeight": "bold", "color": "#3b82f6"},
+                ],
+                columns=[
+                    {"name": "ID", "id": "id", "type": "numeric"},
+                    {"name": "Event ID", "id": "event_id", "type": "numeric"},
+                    {"name": "Hour", "id": "hour", "type": "numeric"},
+                    {"name": "Day", "id": "day_of_week", "type": "numeric"},
+                    {"name": "Risk", "id": "risk_score", "type": "numeric", "format": {"specifier": ".4f"}},
+                    {"name": "Priority", "id": "priority", "type": "text"},
                 ],
             )
         ]),
@@ -53,7 +61,7 @@ def events_modal():
     ], id="events-modal", size="xl", is_open=False, scrollable=True)
 
 def feedback_history_modal():
-    """Modal for showing feedback history (accessible to both Analysts and Admins)."""
+    """Modal for showing feedback history – status column removed."""
     return dbc.Modal([
         dbc.ModalHeader(dbc.ModalTitle(id="feedback-modal-title", children="Feedback History")),
         dbc.ModalBody([
@@ -71,12 +79,26 @@ def feedback_history_modal():
                      "backgroundColor": "#7f1a1a", "color": "#fca5a5"},
                     {"if": {"filter_query": '{is_correctly_classified} = true'},
                      "backgroundColor": "#064e3b", "color": "#6ee7b7"},
-                    {"if": {"filter_query": '{status} = "pending"'},
-                     "color": "#fcd34d"},
-                    {"if": {"filter_query": '{status} = "reviewed"'},
-                     "color": "#6ee7b7"},
+                ],
+                columns=[
+                    {"name": "ID", "id": "id", "type": "numeric"},
+                    {"name": "Event Index", "id": "event_index", "type": "numeric"},
+                    {"name": "Predicted", "id": "predicted_label", "type": "text"},
+                    {"name": "Correct Label", "id": "correct_label", "type": "text"},
+                    {"name": "Correct?", "id": "is_correctly_classified", "type": "text"},
+                    {"name": "Analyst", "id": "analyst_username", "type": "text"},
+                    {"name": "Submitted", "id": "submitted_at", "type": "text"},
+                    {"name": "Reviewed By", "id": "reviewed_by", "type": "text"},
                 ],
             )
         ]),
         dbc.ModalFooter(dbc.Button("Close", id="close-feedback-modal", className="ml-auto")),
     ], id="feedback-history-modal", size="xl", is_open=False, scrollable=True)
+
+def model_metrics_modal():
+    """Modal for showing model performance metrics."""
+    return dbc.Modal([
+        dbc.ModalHeader(dbc.ModalTitle(id="model-metrics-title", children="Model Metrics")),
+        dbc.ModalBody(id="model-metrics-body"),
+        dbc.ModalFooter(dbc.Button("Close", id="close-model-metrics-modal", className="ml-auto")),
+    ], id="model-metrics-modal", size="lg", is_open=False, scrollable=True)

@@ -1,8 +1,8 @@
-# dashboard.py
+# frontend/dashboard/dashboard.py
 from dash import dcc, html, dash_table
 import dash_bootstrap_components as dbc
 from utils import API, CLASS_LABELS
-from components import stat_card, chart_card, events_modal, feedback_history_modal
+from components import stat_card, chart_card, events_modal, feedback_history_modal, model_metrics_modal
 from callbacks import register_dashboard_callbacks
 
 
@@ -13,6 +13,7 @@ def dashboard_layout(username, role):
 
         # ── Local token store (synced from auth-store on login) ──
         dcc.Store(id="token-store", storage_type="session", data={}),
+        dcc.Store(id="model-metrics-store", data={}),
 
         # ── Header ──
         dbc.Row([
@@ -89,8 +90,8 @@ def dashboard_layout(username, role):
                                     ),
                                     dbc.Input(
                                         id="shap-index", type="number",
-                                        value=0, min=0,
-                                        placeholder="Event index",
+                                        value=1, min=0,
+                                        placeholder="Enter Event ID (primary key)",
                                         style={"backgroundColor": "#0f172a",
                                                "border": "1px solid #3b82f6",
                                                "color": "white"}
@@ -197,88 +198,145 @@ def dashboard_layout(username, role):
         ], className="mb-4 g-3"),
 
         # ── ADMIN CONTROLS ──
-        dbc.Row([dbc.Col([
-            dbc.Card([
-                dbc.CardHeader([
-                    html.I(className="fas fa-cogs me-2",
-                           style={"color": "#6366f1"}),
-                    html.Span("Admin Controls — Model Management",
-                              style={"color": "#6366f1", "fontWeight": "600"})
-                ]),
-                dbc.CardBody([
-                    html.Div(id="active-model-display", className="mb-3"),
-                    html.Div(id="switch-model-message", className="mb-3"),
-                    html.P(
-                        "Switch the active classification model. "
-                        "Rebuilding cache may take a minute.",
-                        style={"color": "#94a3b8", "fontSize": "12px",
-                               "marginBottom": "16px"}
-                    ),
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Button(
-                                [html.I(className="fas fa-bolt me-2"),
-                                 "Switch to XGBoost"],
-                                id="switch-xgboost-btn", n_clicks=0,
-                                className="w-100",
-                                style={"background":
-                                           "linear-gradient(135deg, #f59e0b, #d97706)",
-                                       "border": "none",
-                                       "borderRadius": "8px",
-                                       "fontWeight": "500",
-                                       "color": "white"}
-                            )
-                        ], width=4),
-                        dbc.Col([
-                            dbc.Button(
-                                [html.I(className="fas fa-tree me-2"),
-                                 "Switch to Random Forest"],
-                                id="switch-rf-btn", n_clicks=0,
-                                className="w-100",
-                                style={"background":
-                                           "linear-gradient(135deg, #10b981, #059669)",
-                                       "border": "none",
-                                       "borderRadius": "8px",
-                                       "fontWeight": "500",
-                                       "color": "white"}
-                            )
-                        ], width=4),
-                        dbc.Col([
-                            dbc.Button(
-                                [html.I(className="fas fa-sync-alt me-2"),
-                                 "Rebuild Cache"],
-                                id="rebuild-cache-btn", n_clicks=0,
-                                className="w-100",
-                                style={"background":
-                                           "linear-gradient(135deg, #6366f1, #4f46e5)",
-                                       "border": "none",
-                                       "borderRadius": "8px",
-                                       "fontWeight": "500",
-                                       "color": "white"}
-                            )
-                        ], width=4),
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.I(className="fas fa-cogs me-2",
+                               style={"color": "#6366f1"}),
+                        html.Span("Admin Controls — Model Management",
+                                  style={"color": "#6366f1", "fontWeight": "600"})
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="active-model-display", className="mb-3"),
+                        html.Div(id="switch-model-message", className="mb-3"),
+                        html.P(
+                            "Switch the active classification model. "
+                            "Rebuilding cache may take a minute.",
+                            style={"color": "#94a3b8", "fontSize": "12px",
+                                   "marginBottom": "16px"}
+                        ),
+                        # ── Model switch buttons with Info ──
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button(
+                                    [html.I(className="fas fa-bolt me-2"), "XGBoost"],
+                                    id="switch-xgboost-btn", n_clicks=0,
+                                    className="w-100",
+                                    style={"background": "linear-gradient(135deg, #f59e0b, #d97706)",
+                                           "border": "none", "borderRadius": "8px",
+                                           "fontWeight": "500", "color": "white"}
+                                ),
+                                dbc.Button(
+                                    [html.I(className="fas fa-info-circle me-1"), "Info"],
+                                    id="info-xgboost-btn",
+                                    color="secondary",
+                                    size="sm",
+                                    className="w-100 mt-1",
+                                    style={"backgroundColor": "#334155", "border": "none"}
+                                )
+                            ], width=4),
+                            dbc.Col([
+                                dbc.Button(
+                                    [html.I(className="fas fa-tree me-2"), "Random Forest"],
+                                    id="switch-rf-btn", n_clicks=0,
+                                    className="w-100",
+                                    style={"background": "linear-gradient(135deg, #10b981, #059669)",
+                                           "border": "none", "borderRadius": "8px",
+                                           "fontWeight": "500", "color": "white"}
+                                ),
+                                dbc.Button(
+                                    [html.I(className="fas fa-info-circle me-1"), "Info"],
+                                    id="info-rf-btn",
+                                    color="secondary",
+                                    size="sm",
+                                    className="w-100 mt-1",
+                                    style={"backgroundColor": "#334155", "border": "none"}
+                                )
+                            ], width=4),
+                            dbc.Col([
+                                dbc.Button(
+                                    [html.I(className="fas fa-cat me-2"), "CatBoost"],
+                                    id="switch-catboost-btn", n_clicks=0,
+                                    className="w-100",
+                                    style={"background": "linear-gradient(135deg, #8b5cf6, #6d28d9)",
+                                           "border": "none", "borderRadius": "8px",
+                                           "fontWeight": "500", "color": "white"}
+                                ),
+                                dbc.Button(
+                                    [html.I(className="fas fa-info-circle me-1"), "Info"],
+                                    id="info-catboost-btn",
+                                    color="secondary",
+                                    size="sm",
+                                    className="w-100 mt-1",
+                                    style={"backgroundColor": "#334155", "border": "none"}
+                                )
+                            ], width=4),
+                        ], className="mb-3"),
+                        # ── Rebuild Cache button ──
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button(
+                                    [html.I(className="fas fa-sync-alt me-2"),
+                                     "Rebuild Cache"],
+                                    id="rebuild-cache-btn", n_clicks=0,
+                                    className="w-100",
+                                    style={"background":
+                                               "linear-gradient(135deg, #6366f1, #4f46e5)",
+                                           "border": "none",
+                                           "borderRadius": "8px",
+                                           "fontWeight": "500",
+                                           "color": "white"}
+                                )
+                            ], width=6, className="mx-auto"),
+                        ], justify="center"),
+                        # ── Retrain Models from Feedback button ──
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button(
+                                    [html.I(className="fas fa-robot me-2"),
+                                     "Retrain Models from Feedback"],
+                                    id="retrain-models-btn", n_clicks=0,
+                                    className="w-100 mt-3",
+                                    style={"background":
+                                               "linear-gradient(135deg, #8b5cf6, #6d28d9)",
+                                           "border": "none",
+                                           "borderRadius": "8px",
+                                           "fontWeight": "500",
+                                           "color": "white"}
+                                )
+                            ], width=8, className="mx-auto"),
+                        ], justify="center"),
+                        html.P(
+                            "Retrain all models using analyst feedback. "
+                            "This may take several minutes.",
+                            style={"color": "#94a3b8", "fontSize": "11px",
+                                   "marginTop": "8px", "textAlign": "center"}
+                        ),
                     ])
-                ])
-            ], className="shadow-sm mb-4",
-               style={"backgroundColor": "#1e293b",
-                      "border": "1px solid #6366f1"})
-        ])])
-        if is_admin else html.Div(
+                ], className="shadow-sm mb-4",
+                   style={"backgroundColor": "#1e293b",
+                          "border": "1px solid #6366f1"})
+            ])
+        ]) if is_admin else html.Div(
             [
                 html.Div(id="active-model-display", style={"display": "none"}),
                 html.Div(id="switch-model-message", style={"display": "none"}),
-                html.Button(id="switch-xgboost-btn", style={"display": "none"},
-                            n_clicks=0),
-                html.Button(id="switch-rf-btn", style={"display": "none"},
-                            n_clicks=0),
-                html.Button(id="rebuild-cache-btn", style={"display": "none"},
-                            n_clicks=0),
+                html.Button(id="switch-xgboost-btn", style={"display": "none"}, n_clicks=0),
+                html.Button(id="switch-rf-btn", style={"display": "none"}, n_clicks=0),
+                html.Button(id="switch-catboost-btn", style={"display": "none"}, n_clicks=0),
+                html.Button(id="rebuild-cache-btn", style={"display": "none"}, n_clicks=0),
+                html.Button(id="retrain-models-btn", style={"display": "none"}, n_clicks=0),
+                html.Button(id="info-xgboost-btn", style={"display": "none"}, n_clicks=0),
+                html.Button(id="info-rf-btn", style={"display": "none"}, n_clicks=0),
+                html.Button(id="info-catboost-btn", style={"display": "none"}, n_clicks=0),
             ]
         ),
 
         # ── Modals ──
         events_modal(),
         feedback_history_modal(),
+        model_metrics_modal(),
 
         # Hidden stores
         dcc.Store(id="modal-priority-store", data=None),
@@ -292,7 +350,7 @@ def dashboard_layout(username, role):
             html.Button(id="refresh-btn", n_clicks=0),
         ], style={"display": "none"}),
 
-        # Hidden container for feedback history (no longer used, but keep to avoid callback errors)
+        # Hidden container for feedback history
         html.Div(id="feedback-table-container", style={"display": "none"}),
 
     ], fluid=True,
